@@ -28,7 +28,7 @@ Callaway & Sant'Anna). O plano completo está em [`PLANO.md`](PLANO.md).
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt -r requirements-dev.txt
 jupyter nbconvert --to notebook --execute --inplace notebooks/01_extracao.ipynb
 jupyter nbconvert --to notebook --execute --inplace notebooks/02_analise.ipynb
 cd artigo && latexmk -xelatex main-artigo.tex
@@ -36,7 +36,11 @@ cd artigo && latexmk -xelatex main-artigo.tex
 
 **Google Colab:** os cadernos podem ser abertos isolados. A primeira célula de
 código clona este repositório na sessão do Colab e passa a trabalhar em
-`APPD_26/notebooks/`. Os arquivos gerados ficam nessa cópia temporária, que some
+`APPD_26/notebooks/`. No Colab, a instalação usa `requirements-colab.txt`, que
+acrescenta só as bibliotecas ausentes (PySUS, linearmodels, differences, sidrapy)
+sem trocar as versões do próprio Colab; o caderno imprime as versões efetivas.
+O aviso de conflito entre `holidays` e `python-dateutil` pode ser ignorado: o PySUS
+fixa `python-dateutil==2.8.2` e o pacote `holidays` não é usado. Os arquivos gerados ficam nessa cópia temporária, que some
 quando a sessão termina: baixe o que precisar ou faça commit a partir dela.
 
 Testes das funções auxiliares: `python -m pytest tests -q`.
@@ -48,7 +52,7 @@ Testes das funções auxiliares: `python -m pytest tests -q`.
 - Acesso ao FTP do DATASUS (`ftp.datasus.gov.br`), à API de localidades e ao SIDRA do IBGE.
   Se o FTP falhar, `src/appd/download.py` usa o catálogo-espelho do PySUS e registra a troca.
 - TeX Live com `latexmk`, `xelatex`, `biber` e a fonte Times New Roman (ou Overleaf).
-- Python 3.12 ou 3.13 (versões das bibliotecas em `requirements.txt`).
+- Python 3.11 a 3.13 (versões em `requirements.txt`; ferramentas de execução e teste em `requirements-dev.txt`).
 
 ## Estrutura
 

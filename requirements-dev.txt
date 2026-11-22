@@ -1,0 +1,6 @@
+# Ferramentas de execução e teste, só para uso local (não instalar no Colab).
+jupyter==1.1.1
+nbconvert==7.17.2
+nbformat==5.11.1
+ipykernel==7.4.0
+pytest==9.2.0

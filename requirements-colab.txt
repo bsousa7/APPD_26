@@ -1,0 +1,10 @@
+# Google Colab: instala só as bibliotecas que o Colab não traz e mantém as
+# versões pré-instaladas de pandas, scipy, matplotlib, scikit-learn etc., para
+# não quebrar o próprio ambiente do Colab (google-colab fixa pandas, requests,
+# ipykernel). As versões efetivamente usadas são impressas pelo caderno.
+pysus==2.12.2
+linearmodels==7.1
+differences==0.3.0
+sidrapy==0.1.4
+# O PySUS exige numpy>=2.4 e o numba do Colab exige numpy<2.5.
+numpy>=2.4,<2.5
