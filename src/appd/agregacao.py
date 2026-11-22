@@ -138,22 +138,39 @@ def primeiro_ano_tratamento(polos: pd.DataFrame, col_n: str = "n_polos") -> pd.S
     return com_polo.groupby("cod6")["ano"].min().rename("g")
 
 
+def _competencia(serie: pd.Series) -> pd.Series:
+    """Competência como número AAAAMM; vazio, zeros ou 999999 viram <NA>."""
+    num = pd.to_numeric(serie.astype("string").str.replace(r"\D", "", regex=True),
+                        errors="coerce")
+    return num.where((num > 0) & (num < 999999))
+
+
 def contar_incentivos(
     inc: pd.DataFrame,
     ano: int,
     codigos: set[str],
-    col_incentivo: str,
+    col_incentivo: str = "SGRUPHAB",
     col_mun: str = "CODUFMUN",
     col_cnes: str = "CNES",
+    competencia: int | None = None,
+    col_inicio: str = "CMPT_INI",
+    col_fim: str = "CMPT_FIM",
 ) -> pd.DataFrame:
     """Conta estabelecimentos com algum dos incentivos `codigos` (CNES-IN).
 
     Os códigos são comparados só pelos dígitos (\"81.12\" == \"8112\").
+    Se `competencia` (AAAAMM) for dada e as colunas de vigência existirem, conta
+    só os incentivos vigentes nela: início <= competência e fim vazio ou >= ela.
     Devolve colunas: cod6, ano, n_estab_incentivo.
     """
     alvo = {c.replace(".", "") for c in codigos}
     codigo = inc[col_incentivo].astype("string").str.replace(r"\D", "", regex=True)
-    sel = inc.loc[codigo.isin(alvo), [col_mun, col_cnes]].copy()
+    manter = codigo.isin(alvo)
+    if competencia is not None and {col_inicio, col_fim} <= set(inc.columns):
+        inicio, fim = _competencia(inc[col_inicio]), _competencia(inc[col_fim])
+        vigente = (inicio.isna() | (inicio <= competencia)) & (fim.isna() | (fim >= competencia))
+        manter &= vigente.fillna(True)
+    sel = inc.loc[manter, [col_mun, col_cnes]].copy()
     sel["cod6"] = normalizar_cod6(sel[col_mun])
     contagem = (
         sel.drop_duplicates(subset=[col_cnes])

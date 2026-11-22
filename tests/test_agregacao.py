@@ -69,6 +69,12 @@ def test_incentivos_leitos_equipes():
     inc = pd.DataFrame({"CNES": ["1", "1", "2", "3"], "CODUFMUN": ["120040"] * 4,
                         "INCENTIV": ["81.12", "8113", "8113", "7000"]})
     assert contar_incentivos(inc, 2015, {"81.12", "81.13"}, "INCENTIV")["n_estab_incentivo"].tolist() == [2]
+    vig = pd.DataFrame({"CNES": ["1", "2", "3"], "CODUFMUN": ["120040"] * 3,
+                        "SGRUPHAB": ["8112"] * 3,
+                        "CMPT_INI": ["201401", "201601", "201301"],
+                        "CMPT_FIM": ["", "", "201506"]})
+    # vigentes em 201512: só o CNES 1 (o 2 começa depois; o 3 terminou antes)
+    assert contar_incentivos(vig, 2015, {"81.12"}, competencia=201512)["n_estab_incentivo"].tolist() == [1]
     lt = pd.DataFrame({"CODUFMUN": ["120040", "120040"], "QT_SUS": ["3", "4"],
                        "QT_EXIST": ["5", None]})
     assert somar_leitos(lt).iloc[0][["leitos_sus", "leitos_existentes"]].tolist() == [7, 5]
