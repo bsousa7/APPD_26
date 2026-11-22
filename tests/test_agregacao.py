@@ -124,3 +124,32 @@ def test_ler_parquets_coluna_ausente_nao_le_o_resto(tmp_path):
 
 def test_mde():
     assert abs(mde(1.0) - 2.8016) < 1e-3
+
+
+def test_baixar_datasus_com_caminho_so_com_nome(tmp_path, monkeypatch):
+    """Reproduz o caso do Colab: o PySUS devolve só o nome do arquivo."""
+    import pysus
+
+    from appd import download as dl
+
+    cache = tmp_path / "cache"
+    pasta = cache / "downloads" / "ftp" / "cnes" / "IN"
+    pasta.mkdir(parents=True)
+    monkeypatch.setattr(dl, "CACHE_DIR", cache)
+
+    def cnes_falso(**kwargs):
+        pd.DataFrame({"CNES": ["1"], "CODUFMUN": ["120040"], "CPF_CNPJ": ["sigiloso"],
+                      "INCENTIV": ["8112"]}).to_parquet(pasta / "INAC1512.parquet")
+        (pasta / "INAC1512.dbc").write_bytes(b"bruto")
+        return ["INAC1512.parquet"]
+
+    monkeypatch.setattr(pysus.ftp, "cnes", cnes_falso)
+    df = dl.baixar_datasus("cnes", "AC", 2015, 12, grupo="IN", colunas=["CNES", "INCENTIV"])
+    assert list(df.columns) == ["CNES", "INCENTIV"]  # CPF_CNPJ não é lido
+    assert not (pasta / "INAC1512.parquet").exists()  # bruto apagado
+    assert not (pasta / "INAC1512.dbc").exists()
+
+    cnes_falso()
+    esquema = dl.esquema_datasus("cnes", "AC", 2015, 12, grupo="IN")
+    assert "INCENTIV" in set(esquema["coluna"])
+    assert not (pasta / "INAC1512.parquet").exists()

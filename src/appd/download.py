@@ -41,13 +41,61 @@ def registro_acessos() -> pd.DataFrame:
     return pd.DataFrame(REGISTRO_ACESSOS)
 
 
+CACHE_DIR: Path | None = None
+
+
 def configurar_cache(raiz: Path) -> Path:
-    """Aponta o cache do PySUS para data/raw/pysus (vazio na entrega)."""
+    """Aponta o cache do PySUS para data/raw/pysus (vazio na entrega).
+
+    O PySUS fixa a pasta de cache no momento da importação; por isso a variável
+    de ambiente é definida antes do primeiro `import pysus`. Se o PySUS já tiver
+    sido importado, os arquivos podem ir para ~/pysus, e `_resolver` os acha lá.
+    """
+    import os
+    import sys
+
+    global CACHE_DIR
+    destino = (Path(raiz) / "data" / "raw" / "pysus").resolve()
+    destino.mkdir(parents=True, exist_ok=True)
+    if "pysus" not in sys.modules:
+        os.environ["PYSUS_CACHEPATH"] = str(destino)
     import pysus
 
-    destino = Path(raiz) / "data" / "raw" / "pysus"
-    destino.mkdir(parents=True, exist_ok=True)
-    return pysus.set_cache(destino)
+    pysus.set_cache(destino)
+    CACHE_DIR = destino
+    return destino
+
+
+def _pastas_de_cache() -> list[Path]:
+    pastas = [CACHE_DIR, Path.home() / "pysus", Path.cwd()]
+    try:
+        import pysus
+
+        pastas.append(Path(pysus.CACHEPATH))
+    except ImportError:
+        pass
+    vistas, saida = set(), []
+    for p in pastas:
+        if p is not None and p.exists() and p.resolve() not in vistas:
+            vistas.add(p.resolve())
+            saida.append(p)
+    return saida
+
+
+def _resolver(caminho: str) -> Path:
+    """Caminho local do arquivo baixado pelo PySUS.
+
+    O PySUS às vezes devolve só o nome do arquivo (ex.: "INAC1512.parquet");
+    nesse caso, procura-o pelo nome nas pastas de cache (o mais recente).
+    """
+    p = Path(caminho)
+    if p.exists():
+        return p
+    achados = [a for pasta in _pastas_de_cache() for a in pasta.rglob(p.name)]
+    if not achados:
+        raise FileNotFoundError(
+            f"{caminho}: não encontrado nas pastas de cache {[str(x) for x in _pastas_de_cache()]}")
+    return max(achados, key=lambda a: a.stat().st_mtime)
 
 
 def _fora_do_laco_jupyter(funcao, **argumentos):
@@ -96,6 +144,9 @@ def apagar(caminhos: list[str]) -> None:
             shutil.rmtree(p, ignore_errors=True)
         elif p.exists():
             p.unlink()
+        for irmao in (p.with_suffix(".dbc"), p.with_suffix(".dbf"), p.with_suffix(".DBC")):
+            if irmao.exists() and irmao.is_file():
+                irmao.unlink()
 
 
 def _baixar_caminhos(sistema: str, uf: str, ano: int, mes: int | None,
@@ -119,7 +170,7 @@ def _baixar_caminhos(sistema: str, uf: str, ano: int, mes: int | None,
             caminhos = [caminhos] if isinstance(caminhos, (str, Path)) else list(caminhos)
             if not caminhos:
                 raise FileNotFoundError("nenhum arquivo encontrado")
-            return [str(c) for c in caminhos], (
+            return [str(_resolver(str(c))) for c in caminhos], (
                 "FTP DATASUS" if origem == "origin" else "catálogo PySUS (espelho)"
             )
         except Exception as erro:  # noqa: BLE001 - registra e tenta a próxima origem
