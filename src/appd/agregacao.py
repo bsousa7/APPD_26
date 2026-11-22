@@ -200,23 +200,34 @@ def somar_leitos(
     return base.groupby("cod6", as_index=False)[["leitos_sus", "leitos_existentes"]].sum()
 
 
+def _data(serie: pd.Series) -> pd.Series:
+    """Converte datas do DATASUS (AAAAMMDD ou ISO); o resto vira NaT."""
+    texto = serie.astype("string").str.strip()
+    d1 = pd.to_datetime(texto, format="%Y%m%d", errors="coerce")
+    d2 = pd.to_datetime(texto, format="ISO8601", errors="coerce")
+    return d1.fillna(d2)
+
+
 def contar_equipes(
     ep: pd.DataFrame,
     col_mun: str = "CODUFMUN",
     col_tipo: str = "TIPO_EQP",
     col_desativacao: str = "DT_DESAT",
+    data_referencia: str | None = None,
 ) -> pd.DataFrame:
     """Conta equipes ativas por município e tipo de equipe (CNES-EP).
 
-    Equipes com data de desativação preenchida são descartadas, se a coluna
-    existir. A escolha de quais tipos contam como Saúde da Família ou NASF é
-    feita no caderno, a partir do dicionário de rótulos.
+    Se `data_referencia` (ex.: "2010-12-31") for dada e a coluna de desativação
+    existir, descarta só as equipes com data de desativação válida até essa
+    data; valores vazios ou que não são datas (ex.: zeros) contam como ativas.
+    A escolha de quais tipos contam como Saúde da Família ou NASF é feita no
+    caderno, a partir do dicionário de rótulos.
     Devolve colunas: cod6, tipo_eqp, n_equipes.
     """
     ativas = ep
-    if col_desativacao in ep.columns:
-        dt = ep[col_desativacao].astype("string").str.strip()
-        ativas = ep.loc[dt.isna() | (dt == "")]
+    if data_referencia is not None and col_desativacao in ep.columns:
+        desativacao = _data(ep[col_desativacao])
+        ativas = ep.loc[(desativacao.isna() | (desativacao > pd.Timestamp(data_referencia))).values]
     base = pd.DataFrame(
         {
             "cod6": normalizar_cod6(ativas[col_mun]),
@@ -285,3 +296,25 @@ def montar_painel(
     populacao = populacao.assign(ano=populacao["ano"].astype("int64"))
     painel = painel.merge(populacao, on=["cod6", "ano"], how="left")
     return painel.sort_values(["cod6", "ano"]).reset_index(drop=True)
+
+
+def codigos_incentivo_por_tipo(inc: pd.DataFrame, st: pd.DataFrame, competencia: int,
+                               col_codigo: str = "SGRUPHAB") -> pd.DataFrame:
+    """Para cada código de habilitação/incentivo vigente na competência, conta os
+    estabelecimentos que o têm e quantos deles são polos tipo 74 (CNES-ST).
+
+    Serve para identificar, pelos dados, os códigos ligados ao Programa
+    Academia da Saúde. Devolve: codigo, n_estab, n_estab_tipo74.
+    """
+    inc = inc.copy()
+    inc["codigo"] = inc[col_codigo].astype("string").str.strip()
+    if {"CMPT_INI", "CMPT_FIM"} <= set(inc.columns):
+        ini, fim = _competencia(inc["CMPT_INI"]), _competencia(inc["CMPT_FIM"])
+        inc = inc.loc[((ini.isna() | (ini <= competencia)) & (fim.isna() | (fim >= competencia))).values]
+    tipo = st[["CNES", "TP_UNID"]].drop_duplicates("CNES")
+    tipo = tipo.assign(polo=tipo["TP_UNID"].astype("string").str.strip().str.zfill(2) == TP_UNID_POLO)
+    base = inc[["CNES", "codigo"]].drop_duplicates().merge(tipo[["CNES", "polo"]], on="CNES", how="left")
+    base["polo"] = base["polo"].fillna(False).astype(bool)
+    return (base.groupby("codigo")
+                .agg(n_estab=("CNES", "nunique"), n_estab_tipo74=("polo", "sum"))
+                .reset_index())

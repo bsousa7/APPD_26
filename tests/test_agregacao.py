@@ -78,10 +78,23 @@ def test_incentivos_leitos_equipes():
     lt = pd.DataFrame({"CODUFMUN": ["120040", "120040"], "QT_SUS": ["3", "4"],
                        "QT_EXIST": ["5", None]})
     assert somar_leitos(lt).iloc[0][["leitos_sus", "leitos_existentes"]].tolist() == [7, 5]
-    ep = pd.DataFrame({"CODUFMUN": ["120040"] * 3, "TIPO_EQP": ["01", "01", "06"],
-                       "DT_DESAT": [None, "20100501", ""]})
-    eq = contar_equipes(ep).set_index("tipo_eqp")["n_equipes"].to_dict()
-    assert eq == {"01": 1, "06": 1}
+    ep = pd.DataFrame({"CODUFMUN": ["120040"] * 5, "TIPO_EQP": ["01", "01", "06", "06", "01"],
+                       "DT_DESAT": [None, "20100501", "", "00000000", "20110301"]})
+    eq = contar_equipes(ep, data_referencia="2010-12-31").set_index("tipo_eqp")["n_equipes"].to_dict()
+    # desativada em 2010-05 sai; vazio, zeros (não é data) e desativada em 2011 contam como ativas
+    assert eq == {"01": 2, "06": 2}
+
+
+def test_codigos_incentivo_por_tipo():
+    from appd.agregacao import codigos_incentivo_por_tipo
+
+    inc = pd.DataFrame({"CNES": ["1", "2", "3", "1"], "SGRUPHAB": ["8112", "8112", "8104", "9999"],
+                        "CMPT_INI": ["201401", "201401", "201401", "201701"], "CMPT_FIM": ["", "", "", ""]})
+    st = pd.DataFrame({"CNES": ["1", "2", "3"], "TP_UNID": ["74", "02", "74"]})
+    out = codigos_incentivo_por_tipo(inc, st, 201612).set_index("codigo")
+    assert out.loc["8112", "n_estab"] == 2 and out.loc["8112", "n_estab_tipo74"] == 1
+    assert out.loc["8104", "n_estab_tipo74"] == 1
+    assert "9999" not in out.index  # não vigente em 201612
 
 
 def test_interpolar_populacao():
