@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import datetime as dt
 import shutil
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pandas as pd
@@ -47,6 +48,18 @@ def configurar_cache(raiz: Path) -> Path:
     destino = Path(raiz) / "data" / "raw" / "pysus"
     destino.mkdir(parents=True, exist_ok=True)
     return pysus.set_cache(destino)
+
+
+def _fora_do_laco_jupyter(funcao, **argumentos):
+    """Executa uma chamada do PySUS numa thread separada.
+
+    Dentro do Jupyter já existe um laço de eventos ativo; nesse caso o PySUS
+    aplica o `nest_asyncio`, que é incompatível com o ipykernel no Python 3.13
+    (erros "cannot enter context ... is already entered"). Numa thread nova
+    não há laço ativo e o PySUS usa `asyncio.run` normalmente.
+    """
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        return executor.submit(funcao, **argumentos).result()
 
 
 def _ler_parquets(caminhos: list[str], colunas: list[str] | None) -> pd.DataFrame:
@@ -101,7 +114,7 @@ def baixar_datasus(
     ultimo_erro: Exception | None = None
     for origem in ("origin", "catalog"):
         try:
-            caminhos = funcao(**argumentos, source=origem)
+            caminhos = _fora_do_laco_jupyter(funcao, **argumentos, source=origem)
             caminhos = [caminhos] if isinstance(caminhos, (str, Path)) else list(caminhos)
             df = _ler_parquets(caminhos, colunas)
             if apagar_bruto:
