@@ -17,9 +17,9 @@ GRUPOS_CID: dict[str, tuple[str, str]] = {
     "diabetes": ("E10", "E14"),
     "apendicite": ("K35", "K38"),  # desfecho placebo
 }
+GRUPO_OUTRAS = "outras"  # demais diagnósticos (para totais e conferência)
 
-# Código do tipo de estabelecimento "Polo Academia da Saúde" no CNES
-# (Portaria SAS/MS nº 24/2014).
+# Código do tipo de estabelecimento "Polo Academia da Saúde" no CNES.
 TP_UNID_POLO = "74"
 
 
@@ -61,33 +61,48 @@ def normalizar_cod6(cod: pd.Series) -> pd.Series:
     return cod.str[:6]
 
 
+def _numero(serie: pd.Series) -> pd.Series:
+    return pd.to_numeric(serie.astype("string").str.strip(), errors="coerce")
+
+
+# --------------------------------------------------------------------- SIH
 def agregar_sih(
     rd: pd.DataFrame,
     col_mun: str = "MUNIC_RES",
     col_ano: str = "ANO_CMPT",
     col_cid: str = "DIAG_PRINC",
+    col_ident: str = "IDENT",
 ) -> pd.DataFrame:
-    """Conta internações por município de residência × ano × grupo de CID.
+    """Conta AIHs por município de residência × ano × grupo de CID × tipo de AIH.
 
-    Linhas cujo diagnóstico principal não pertence a nenhum grupo são
-    descartadas. Devolve colunas: cod6, ano, grupo, internacoes.
+    Diagnósticos fora dos grupos de interesse entram como "outras", para que o
+    total possa ser conferido com o TabNet. O tipo de AIH (`IDENT`: 1 = normal,
+    5 = longa permanência) é mantido como dimensão; o filtro é feito depois,
+    com a contagem registrada no caderno.
+    Devolve colunas: cod6, ano, grupo, ident, internacoes.
     """
     base = pd.DataFrame(
         {
             "cod6": normalizar_cod6(rd[col_mun]),
-            "ano": pd.to_numeric(rd[col_ano], errors="coerce").astype("Int64"),
-            "grupo": classificar_cid(rd[col_cid]),
+            "ano": _numero(rd[col_ano]).astype("Int64"),
+            "grupo": classificar_cid(rd[col_cid]).fillna(GRUPO_OUTRAS),
+            "ident": (
+                rd[col_ident].astype("string").str.strip()
+                if col_ident in rd.columns
+                else pd.Series(pd.NA, index=rd.index, dtype="string")
+            ).fillna("ausente"),
         }
     )
-    base = base.dropna(subset=["grupo", "ano", "cod6"])
+    base = base.dropna(subset=["ano", "cod6"])
     return (
-        base.groupby(["cod6", "ano", "grupo"], observed=True)
+        base.groupby(["cod6", "ano", "grupo", "ident"], observed=True)
         .size()
         .rename("internacoes")
         .reset_index()
     )
 
 
+# -------------------------------------------------------------------- CNES
 def contar_polos(
     st: pd.DataFrame,
     ano: int,
@@ -121,3 +136,135 @@ def primeiro_ano_tratamento(polos: pd.DataFrame, col_n: str = "n_polos") -> pd.S
     """
     com_polo = polos.loc[polos[col_n] > 0]
     return com_polo.groupby("cod6")["ano"].min().rename("g")
+
+
+def contar_incentivos(
+    inc: pd.DataFrame,
+    ano: int,
+    codigos: set[str],
+    col_incentivo: str,
+    col_mun: str = "CODUFMUN",
+    col_cnes: str = "CNES",
+) -> pd.DataFrame:
+    """Conta estabelecimentos com algum dos incentivos `codigos` (CNES-IN).
+
+    Os códigos são comparados só pelos dígitos (\"81.12\" == \"8112\").
+    Devolve colunas: cod6, ano, n_estab_incentivo.
+    """
+    alvo = {c.replace(".", "") for c in codigos}
+    codigo = inc[col_incentivo].astype("string").str.replace(r"\D", "", regex=True)
+    sel = inc.loc[codigo.isin(alvo), [col_mun, col_cnes]].copy()
+    sel["cod6"] = normalizar_cod6(sel[col_mun])
+    contagem = (
+        sel.drop_duplicates(subset=[col_cnes])
+        .groupby("cod6")
+        .size()
+        .rename("n_estab_incentivo")
+        .reset_index()
+    )
+    contagem["ano"] = ano
+    return contagem[["cod6", "ano", "n_estab_incentivo"]]
+
+
+def somar_leitos(
+    lt: pd.DataFrame,
+    col_mun: str = "CODUFMUN",
+    col_sus: str = "QT_SUS",
+    col_exist: str = "QT_EXIST",
+) -> pd.DataFrame:
+    """Soma leitos SUS e existentes por município (CNES-LT de uma competência)."""
+    base = pd.DataFrame(
+        {
+            "cod6": normalizar_cod6(lt[col_mun]),
+            "leitos_sus": _numero(lt[col_sus]).fillna(0),
+            "leitos_existentes": _numero(lt[col_exist]).fillna(0),
+        }
+    )
+    return base.groupby("cod6", as_index=False)[["leitos_sus", "leitos_existentes"]].sum()
+
+
+def contar_equipes(
+    ep: pd.DataFrame,
+    col_mun: str = "CODUFMUN",
+    col_tipo: str = "TIPO_EQP",
+    col_desativacao: str = "DT_DESAT",
+) -> pd.DataFrame:
+    """Conta equipes ativas por município e tipo de equipe (CNES-EP).
+
+    Equipes com data de desativação preenchida são descartadas, se a coluna
+    existir. A escolha de quais tipos contam como Saúde da Família ou NASF é
+    feita no caderno, a partir do dicionário de rótulos.
+    Devolve colunas: cod6, tipo_eqp, n_equipes.
+    """
+    ativas = ep
+    if col_desativacao in ep.columns:
+        dt = ep[col_desativacao].astype("string").str.strip()
+        ativas = ep.loc[dt.isna() | (dt == "")]
+    base = pd.DataFrame(
+        {
+            "cod6": normalizar_cod6(ativas[col_mun]),
+            "tipo_eqp": ativas[col_tipo].astype("string").str.strip(),
+        }
+    )
+    return base.groupby(["cod6", "tipo_eqp"]).size().rename("n_equipes").reset_index()
+
+
+# --------------------------------------------------------------- população
+def interpolar_populacao(pop: pd.DataFrame, anos: list[int]) -> pd.DataFrame:
+    """Completa os anos sem estimativa por interpolação linear, por município.
+
+    Recebe colunas cod6, ano, populacao (anos ausentes podem faltar ou ser NaN).
+    Só interpola entre dois anos observados (não extrapola): municípios criados
+    durante o período continuam sem população antes da criação.
+    Devolve cod6, ano, populacao, populacao_imputada (bool).
+    """
+    largo = pop.pivot_table(index="cod6", columns="ano", values="populacao", aggfunc="first")
+    largo = largo.reindex(columns=anos)
+    observado = largo.notna()
+    preenchido = largo.T.interpolate(method="index", limit_area="inside").T
+    saida = preenchido.stack(future_stack=True).rename("populacao").reset_index()
+    saida["populacao_imputada"] = (~observado).stack(future_stack=True).values & saida[
+        "populacao"
+    ].notna().values
+    return saida
+
+
+# ------------------------------------------------------------------ painel
+def montar_painel(
+    municipios: pd.DataFrame,
+    anos: list[int],
+    polos: pd.DataFrame,
+    internacoes: pd.DataFrame,
+    populacao: pd.DataFrame,
+) -> pd.DataFrame:
+    """Painel município × ano com polos, internações por grupo e população.
+
+    - `municipios`: cod6, cod_ibge7, uf, regiao.
+    - `polos`: cod6, ano, n_polos (só municípios com polo).
+    - `internacoes`: cod6, ano, grupo, internacoes (já filtrado por tipo de AIH).
+    - `populacao`: cod6, ano, populacao, populacao_imputada.
+    Contagens ausentes viram 0; população ausente fica NaN.
+    """
+    chave = pd.MultiIndex.from_product(
+        [municipios["cod6"].astype("string"), anos], names=["cod6", "ano"]
+    ).to_frame(index=False)
+    chave["ano"] = chave["ano"].astype("int64")
+    painel = chave.merge(municipios, on="cod6", how="left")
+
+    polos = polos.assign(ano=polos["ano"].astype("int64"))
+    painel = painel.merge(polos[["cod6", "ano", "n_polos"]], on=["cod6", "ano"], how="left")
+    painel["n_polos"] = painel["n_polos"].fillna(0).astype("int64")
+
+    largo = internacoes.assign(ano=internacoes["ano"].astype("int64")).pivot_table(
+        index=["cod6", "ano"], columns="grupo", values="internacoes", aggfunc="sum"
+    )
+    # Todas as colunas de grupo existem, mesmo que um grupo não ocorra no recorte.
+    largo = largo.reindex(columns=[*GRUPOS_CID, GRUPO_OUTRAS])
+    largo.columns = [f"int_{c}" for c in largo.columns]
+    painel = painel.merge(largo.reset_index(), on=["cod6", "ano"], how="left")
+    for c in [c for c in painel.columns if c.startswith("int_")]:
+        painel[c] = painel[c].fillna(0).astype("int64")
+
+    populacao = populacao.assign(ano=populacao["ano"].astype("int64"))
+    painel = painel.merge(populacao, on=["cod6", "ano"], how="left")
+    return painel.sort_values(["cod6", "ano"]).reset_index(drop=True)

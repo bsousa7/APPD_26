@@ -1,5 +1,6 @@
 data/raw/*
 !data/raw/.gitkeep
+data/processed/teste/
 **/__pycache__/
 .ipynb_checkpoints/
 .venv/

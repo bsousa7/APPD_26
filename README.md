@@ -23,7 +23,8 @@ Callaway & Sant'Anna). O plano completo está em [`PLANO.md`](PLANO.md).
 | 0.6 — LaTeX | Template copiado e adaptado em `artigo/`; **compilação a testar localmente** |
 | 1 — Pergunta, estimando, DAG | DAG, teste de backdoor e `fig01_dag.png` feitos (a revisar); literatura pendente |
 | 2 — Esqueleto dos cadernos | Feito (`01_extracao`, `02_analise`) |
-| 3 a 9 | Pendentes |
+| 3 — Extração | `01_extracao` implementado e testado com dados fictícios; **a executar** (teste no AC, depois completo) |
+| 4 a 9 | Pendentes |
 
 ## Como executar
 
@@ -56,6 +57,13 @@ Na primeira execução no Colab, a célula de instalação pode parar pedindo pa
 reiniciar a sessão (troca de versão do numpy). Reinicie em "Ambiente de execução >
 Reiniciar sessão" e execute tudo de novo **desde a primeira célula de código**.
 
+**Extração (`01_extracao.ipynb`).** Execute primeiro com `MODO_TESTE = True` (Acre,
+2014–2015, poucos minutos) e confira, na seção 6.5, um município-ano com o TabNet. Depois
+mude para `MODO_TESTE = False` e execute tudo de novo. Cada parte (uma UF em um ano) é
+gravada assim que termina; se a sessão cair, basta executar de novo, e só as partes que
+faltam são baixadas. No Colab, a célula de ambiente pede para montar o Google Drive e os
+resultados ficam em `MyDrive/APPD_26_dados/processed`.
+
 Testes das funções auxiliares: `python -m pytest tests -q`.
 
 **Tempo estimado:** [PREENCHER após a primeira execução completa do caderno 01].
@@ -71,7 +79,7 @@ Testes das funções auxiliares: `python -m pytest tests -q`.
 
 ```
 notebooks/   00 (teste, não entregue), 01_extracao, 02_analise
-src/appd/    download, agregacao, estimacao
+src/appd/    download, agregacao, armazenamento, estimacao
 data/raw/    vazio na entrega (o caderno 01 baixa os dados)
 data/processed/  bases agregadas e dicionários
 outputs/     figuras/ e tabelas/ usadas no artigo
