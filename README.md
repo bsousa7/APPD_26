@@ -8,7 +8,9 @@
 
 A implantação do primeiro polo do Programa Academia da Saúde reduziu as internações
 por doenças hipertensivas, AVC e diabetes nos municípios que o adotaram?
-Estimando: ATT. Unidade: município × ano, 2008–2024.
+Estimando: ATT. Unidade: município × ano, 2008–2024, com coortes de adoção a partir
+de 2014–2015 (o tipo de estabelecimento 74 só existe no CNES desde 2014; ver
+[`docs/decisoes.md`](docs/decisoes.md)).
 Métodos: escore de propensão e diferenças-em-diferenças (estudo de eventos, TWFE,
 Callaway & Sant'Anna). O plano completo está em [`PLANO.md`](PLANO.md).
 

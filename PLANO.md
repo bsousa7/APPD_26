@@ -5,7 +5,7 @@
 **Política avaliada:** Programa Academia da Saúde (Ministério da Saúde, Portaria GM/MS nº 719/2011; redefinido pela Portaria GM/MS nº 2.681/2013)
 **Entrega:** 31/12/2026
 **Execução:** Claude Code + repositório GitHub
-**Versão do plano:** 21/11/2026
+**Versão do plano:** 22/11/2026 (revisão 1: coortes a partir de 2014; ver "Registro de alterações" abaixo)
 
 > Este plano foi construído a partir de três documentos, consultados em 21/11/2026:
 > - **Orientações para o Trabalho Final**, versão de 14/11/2026 (`trabalho/orientacoes.ipynb`).
@@ -13,6 +13,12 @@
 > - **Template LaTeX do IDP** (`alexlopespereira/TemplateLatexIDP`, commit `717f75f`, de 16/11/2026).
 >
 > Se algum desses documentos mudar, refaça a Fase 0, passo 0.6.
+
+**Registro de alterações**
+
+| Data | Alteração | Motivo |
+|---|---|---|
+| 22/11/2026 | Pré-tratamento passa a 2008–2013 e as coortes começam em 2014–2015 (antes: pré 2008–2011 e coortes desde 2012). Amostra PSM: coortes 2014–2015. Nova robustez R7 (excluir a coorte 2014) e novo risco na seção 10 | O tipo de estabelecimento 74 só foi criado pela Portaria SAS/MS nº 24/2014; o teste de fumaça encontrou zero polos tipo 74 em DF, dez/2012. Decisão dos autores, registrada em `docs/decisoes.md` |
 
 ---
 
@@ -41,14 +47,14 @@
 | **Pergunta causal** | A implantação do primeiro polo do Programa Academia da Saúde reduziu as internações por doenças cardiovasculares e metabólicas sensíveis à atividade física (doenças hipertensivas, AVC e diabetes) nos municípios que o adotaram? |
 | **Estimando** | ATT: o efeito médio sobre os municípios tratados, isto é, sobre os que implantaram ao menos um polo |
 | **Unidade de análise** | Município × ano |
-| **Período** | 2008–2024 no painel principal. Pré-tratamento: 2008–2011. Coortes de adoção: 2012–2022, conforme os dados mostrarem |
+| **Período** | 2008–2024 no painel principal. Pré-tratamento: 2008–2013. Coortes de adoção: a partir de 2014–2015 (o tipo 74 só existe no CNES desde a Portaria SAS/MS nº 24/2014) até 2022, conforme os dados mostrarem |
 | **Tratamento (D)** | Ano do primeiro estabelecimento do **tipo 74, "Polo Academia da Saúde"**, no CNES do município |
 | **Desfecho principal (Y)** | Internações SUS por doenças hipertensivas, AVC e diabetes (CID-10 I10–I15, I60–I69, E10–E14), por 10 mil habitantes, por município de residência |
 | **Desfechos secundários** | Cada grupo de CID em separado; óbitos por doenças hipertensivas (SIM), se a cobertura temporal permitir |
 | **Desfecho placebo** | Internações por apendicite (CID-10 K35–K38), que não deveriam responder ao programa |
 | **Método 1 (Módulo 03)** | Escore de propensão (logit e gradient boosting calibrado), com pareamento por vizinho mais próximo com caliper e IPW. Inclui balanceamento (SMD) antes e depois, love plot, suporte comum e IC 95% |
 | **Método 2 (Módulo 04)** | DiD: estudo de eventos e pré-tendências; TWFE com erros clusterizados por município; placebo; decomposição de Goodman-Bacon; Callaway & Sant'Anna (`differences.ATTgt`) |
-| **Robustez** | Tratamento alternativo (polos com incentivo de custeio 81.12/81.13 no CNES); exclusão de municípios pequenos; desfechos separados; janelas alternativas; efeito mínimo detectável (MDE) |
+| **Robustez** | Tratamento alternativo (polos com incentivo de custeio 81.12/81.13 no CNES); exclusão de municípios pequenos; desfechos separados; janelas alternativas; coortes a partir de 2015 (R7); efeito mínimo detectável (MDE) |
 | **Entregas** | `notebooks/01_extracao.ipynb`, `notebooks/02_analise.ipynb` (os dois executados), artigo em PDF (LaTeX, 8–15 páginas) e repositório GitHub público com a estrutura da seção 7 das orientações |
 
 **Por que essa política funciona com as regras do professor**
@@ -241,7 +247,7 @@ O efeito esperado é **defasado**, porque mudanças de comportamento levam tempo
 
 ### 4.4 Método 1: escore de propensão (Módulo 03)
 
-1. **Amostra transversal:** municípios sem polo até 2011. Tratados: adotaram entre 2012 e 2015 (primeiras coortes). Controles: nunca adotaram até o fim do painel.
+1. **Amostra transversal:** municípios sem polo tipo 74 até 2013. Tratados: primeiro polo tipo 74 em 2014 ou 2015 (primeiras coortes). Controles: nunca adotaram até o fim do painel.
 2. **Covariáveis X, medidas em 2010** (pré-tratamento): as da tabela 4.2.
 3. **Escore:** `LogisticRegression` e `GradientBoostingClassifier` com `CalibratedClassifierCV`, comparados pela curva de calibração e pela AUC.
 4. **Suporte comum:** histogramas sobrepostos; aparar escores fora de [0,05; 0,95] ou fora da sobreposição, registrando quantos municípios saem.
@@ -276,6 +282,7 @@ O efeito esperado é **defasado**, porque mudanças de comportamento levam tempo
 | R4 | Controles "ainda não tratados" no C&S |
 | R5 | Desfecho em log(1 + taxa) |
 | R6 | Mortalidade (SIM) como desfecho alternativo, se a série estiver completa |
+| R7 | Coortes a partir de 2015 (excluir a coorte 2014, cujo primeiro registro tipo 74 pode refletir polos implantados entre 2011 e 2013 e cadastrados só quando o tipo foi criado) |
 | MDE | Efeito mínimo detectável com poder de 80% e α = 5%, a partir da variância residual e do número de clusters |
 
 ---
@@ -284,7 +291,7 @@ O efeito esperado é **defasado**, porque mudanças de comportamento levam tempo
 
 | Base | Uso | Acesso por código | Granularidade | Verificar na Fase 0 |
 |---|---|---|---|---|
-| **CNES – Estabelecimentos (ST)** | Tratamento: `TP_UNID == "74"` por município e competência | `PySUS` (`cnes`), ou FTP `ftp.datasus.gov.br/dissemin/publicos/CNES/200508_/Dados/ST/STUFAAMM.dbc` | Estabelecimento × mês | Existência do campo `TP_UNID`; primeira competência com tipo 74 (esperado após a Portaria SAS 536 de set/2011) |
+| **CNES – Estabelecimentos (ST)** | Tratamento: `TP_UNID == "74"` por município e competência | `PySUS` (`cnes`), ou FTP `ftp.datasus.gov.br/dissemin/publicos/CNES/200508_/Dados/ST/STUFAAMM.dbc` | Estabelecimento × mês | Existência do campo `TP_UNID`; primeira competência com tipo 74 (esperada a partir de 2014, após a Portaria SAS/MS nº 24/2014; o teste de fumaça confirmou zero em DF, dez/2012) |
 | **CNES – Incentivos (IN)** | Tratamento alternativo R1 (81.12/81.13) | `PySUS` (grupo `IN`) ou FTP `.../Dados/IN/` | Estabelecimento × mês | Layout e nome do campo de incentivo |
 | **CNES – Equipes (EP) e Leitos (LT)** | Covariáveis de 2010 (equipes de SF/NASF, leitos SUS) | `PySUS` (grupos `EP`, `LT`) | Estabelecimento × mês | Campos de tipo de equipe e de leito |
 | **SIH/SUS – AIH Reduzida (RD)** | Desfechos e placebo | `PySUS` (`sih`), ou FTP `.../SIHSUS/200801_/Dados/RDUFAAMM.dbc` | Internação × mês | Campos `MUNIC_RES`, `DIAG_PRINC`, `ANO_CMPT`; disponibilidade de 2024 completo |
@@ -481,7 +488,7 @@ pip install pysus pandas numpy scipy statsmodels linearmodels differences scikit
 **Passos:**
 1. **Lista de municípios (IBGE API):** código de 7 dígitos, `cod6`, UF e região. `assert` de 5.570 municípios (confira o número vigente no ano de referência).
 2. **CNES-ST:** para cada UF e cada ano de 2008 a 2024, competência de dezembro. Ler `CNES`, `CODUFMUN`, `TP_UNID`. Agregar `n_polos` por município × ano. Derivar `g` = primeiro ano com `n_polos > 0`.
-   - Registrar quantos municípios já tinham polo (ou similar) antes de 2012 e decidir, em markdown, se serão excluídos.
+   - Registrar quantos municípios têm o primeiro registro tipo 74 já em 2014. Parte deles pode ter implantado o polo entre 2011 e 2013 e só ter sido cadastrada quando o tipo foi criado (a robustez R7 trata disso).
 3. **CNES-IN:** mesmos anos; identificar estabelecimentos com incentivo 81.12/81.13 e derivar `g_custeio` (robustez R1).
 4. **CNES-EP e CNES-LT, competência dez/2010:** equipes de Saúde da Família / NASF e leitos SUS por município (covariáveis).
 5. **SIH-RD, 2008–2024:** UF por UF, mês por mês. Ler só `MUNIC_RES`, `DIAG_PRINC`, `ANO_CMPT`, `IDADE`, `COD_IDADE`. Classificar o CID em `hipertensao` (I10–I15), `avc` (I60–I69), `diabetes` (E10–E14) e `apendicite` (K35–K38). Agregar contagens por município × ano × grupo. **Apagar o `.dbc` após agregar.**
@@ -507,8 +514,8 @@ pip install pysus pandas numpy scipy statsmodels linearmodels differences scikit
 **Passos:**
 1. Ler `data/processed/`, juntar painel, população e covariáveis, e calcular as taxas por 10 mil habitantes.
 2. Definir as amostras e registrar cada exclusão com contagem:
-   - **Amostra DiD:** sem polo até 2011; coortes de 2012 em diante; mais os nunca tratados.
-   - **Amostra PSM:** coortes 2012–2015 contra nunca tratados.
+   - **Amostra DiD:** sem polo tipo 74 até 2013; coortes de 2014 em diante; mais os nunca tratados.
+   - **Amostra PSM:** coortes 2014–2015 contra nunca tratados.
 3. `assert`: painel balanceado (n_mun × n_anos), sem faltantes em Y e D, D monotônico (uma vez tratado, sempre tratado).
 4. Descritiva:
    - Tabela de médias de X e Y por grupo (`tab01_descritiva.csv`).
@@ -743,6 +750,7 @@ sessão em docs/ia/registro-uso-ia.md.
 | FTP do DATASUS instável ou bloqueado | Média | Alto | Teste na Fase 0; retentativas no download; espelho público documentado |
 | API do PySUS diferente da documentação (mudanças de versão) | Média | Médio | Fixar a versão no `requirements.txt`; alternativa por `ftplib` + `pyreaddbc` |
 | Tempo de download e processamento do SIH muito longo | Alta | Médio | Agregar na hora, apagar `.dbc`, separar o `01_extracao`, registrar o tempo |
+| Data de cadastro do tipo 74 diferente da data de implantação (o tipo só existe desde 2014) | Alta | Médio | Coortes a partir de 2014–2015; R7 (excluir a coorte 2014); R1 (incentivo de custeio); discutir no artigo |
 | Polo cadastrado sem funcionamento real (erro de medida em D) | Média | Médio | Robustez R1 (incentivo de custeio 81.12/81.13); discutir no artigo |
 | Pré-tendências violadas | Média | Alto | Reportar com transparência; dar peso ao C&S e ao PSM-DiD; ponderar pelo escore; discutir limites |
 | Poucos municípios nunca tratados (adesão ampla) | Média | Médio | Usar os ainda não tratados como controle no C&S; reportar N por coorte |
