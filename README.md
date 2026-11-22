@@ -23,7 +23,7 @@ Callaway & Sant'Anna). O plano completo está em [`PLANO.md`](PLANO.md).
 | 0.6 — LaTeX | Template copiado e adaptado em `artigo/`; **compilação a testar localmente** |
 | 1 — Pergunta, estimando, DAG | DAG, teste de backdoor e `fig01_dag.png` feitos (a revisar); literatura pendente |
 | 2 — Esqueleto dos cadernos | Feito (`01_extracao`, `02_analise`) |
-| 3 — Extração | `01_extracao` implementado e testado com dados fictícios; **a executar** (teste no AC, depois completo) |
+| 3 — Extração | `01_extracao` implementado; modo de teste (AC, 2014–2015) executado no Colab e conferido com o TabNet ([`docs/validacao/`](docs/validacao/)); **extração completa a executar** |
 | 4 a 9 | Pendentes |
 
 ## Como executar
