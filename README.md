@@ -36,7 +36,15 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/02_analise.ipynb
 cd artigo && latexmk -xelatex main-artigo.tex
 ```
 
-**Google Colab:** os cadernos podem ser abertos isolados. A primeira célula de
+**Google Colab:** abra sempre pelos links abaixo, que carregam a versão atual do GitHub
+(uma aba já aberta ou uma cópia salva no Drive continua com a versão antiga):
+
+- [00_teste_acesso](https://colab.research.google.com/github/bsousa7/APPD_26/blob/claude/friendly-mayer-jzxwk1/notebooks/00_teste_acesso.ipynb)
+- [01_extracao](https://colab.research.google.com/github/bsousa7/APPD_26/blob/claude/friendly-mayer-jzxwk1/notebooks/01_extracao.ipynb)
+- [02_analise](https://colab.research.google.com/github/bsousa7/APPD_26/blob/claude/friendly-mayer-jzxwk1/notebooks/02_analise.ipynb)
+
+(Se a branch for renomeada ou mesclada na `main`, troque `claude/friendly-mayer-jzxwk1` por `main` nos links.)
+Os cadernos podem ser abertos isolados. A primeira célula de
 código clona este repositório na sessão do Colab e passa a trabalhar em
 `APPD_26/notebooks/`. No Colab, a instalação usa `requirements-colab.txt`, que
 acrescenta só as bibliotecas ausentes (PySUS, linearmodels, differences, sidrapy)
