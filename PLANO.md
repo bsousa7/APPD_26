@@ -19,6 +19,7 @@
 | Data | Alteração | Motivo |
 |---|---|---|
 | 22/11/2026 | Pré-tratamento passa a 2008–2013 e as coortes começam em 2014–2015 (antes: pré 2008–2011 e coortes desde 2012). Amostra PSM: coortes 2014–2015. Nova robustez R7 (excluir a coorte 2014) e novo risco na seção 10 | O tipo de estabelecimento 74 só foi criado pela Portaria SAS/MS nº 24/2014; o teste de fumaça encontrou zero polos tipo 74 em DF, dez/2012. Decisão dos autores, registrada em `docs/decisoes.md` |
+| 22/11/2026 | **A alteração acima está em revisão** (provisória) | O teste de fumaça executado mostrou 137 polos tipo 74 em PE já em dez/2012: o tipo existe antes de 2014, e o zero do DF não vale para o país. O ano da primeira coorte será redefinido após a varredura nacional (`00_teste_acesso.ipynb`, seção 2b). Ver `docs/decisoes.md` |
 
 ---
 
