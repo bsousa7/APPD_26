@@ -159,3 +159,13 @@ def test_baixar_datasus_com_caminho_so_com_nome(tmp_path, monkeypatch):
     esquema = dl.esquema_datasus("cnes", "AC", 2015, 12, grupo="IN")
     assert "INCENTIV" in set(esquema["coluna"])
     assert not (pasta / "INAC1512.parquet").exists()
+
+
+def test_classificacao_idade_ignora_responsabilidade():
+    from appd.download import _classificacao_idade
+
+    meta = {"classificacoes": [
+        {"id": 1, "nome": "Situação do domicílio"}, {"id": 2, "nome": "Sexo"},
+        {"id": 287, "nome": "Idade"},
+        {"id": 9, "nome": "Condição no domicílio e o compartilhamento da responsabilidade pelo domicílio"}]}
+    assert _classificacao_idade(meta)["id"] == 287

@@ -317,6 +317,16 @@ def _idade_inicial(nome: str) -> tuple[int | None, bool]:
     return int(m.group(1)), m.group(2) is not None
 
 
+def _classificacao_idade(meta: dict, tabela: str = "") -> dict:
+    """A classificação chamada exatamente "Idade" (ignora, por exemplo,
+    "...responsabilidade...", que também contém a palavra)."""
+    achadas = [c for c in meta["classificacoes"] if c["nome"].strip().lower() == "idade"]
+    if len(achadas) != 1:
+        raise ValueError(f"Tabela {tabela}: esperada 1 classificação 'Idade', "
+                         f"achadas {[c['nome'] for c in meta['classificacoes']]}")
+    return achadas[0]
+
+
 def populacao_idosos_sidra(
     tabela: str,
     variavel: str,
@@ -335,11 +345,7 @@ def populacao_idosos_sidra(
     Devolve: cod_ibge7, pop_total_censo, pop_idosos.
     """
     meta = metadados_sidra(tabela)
-    classif = [c for c in meta["classificacoes"] if "idade" in c["nome"].lower()]
-    if len(classif) != 1:
-        raise ValueError(f"Tabela {tabela}: esperada 1 classificação de idade, "
-                         f"achadas {[c['nome'] for c in meta['classificacoes']]}")
-    classif = classif[0]
+    classif = _classificacao_idade(meta, tabela)
     cats = pd.DataFrame(classif["categorias"])
     cats["nome"] = cats["nome"].astype(str)
     idade = cats["nome"].map(_idade_inicial)
