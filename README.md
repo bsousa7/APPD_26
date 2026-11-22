@@ -34,6 +34,11 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/02_analise.ipynb
 cd artigo && latexmk -xelatex main-artigo.tex
 ```
 
+**Google Colab:** os cadernos podem ser abertos isolados. A primeira célula de
+código clona este repositório na sessão do Colab e passa a trabalhar em
+`APPD_26/notebooks/`. Os arquivos gerados ficam nessa cópia temporária, que some
+quando a sessão termina: baixe o que precisar ou faça commit a partir dela.
+
 Testes das funções auxiliares: `python -m pytest tests -q`.
 
 **Tempo estimado:** [PREENCHER após a primeira execução completa do caderno 01].
