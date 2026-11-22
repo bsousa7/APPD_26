@@ -1,0 +1,49 @@
+%%=============================================================================
+%% ARTIGO -- Trabalho Final APPD (IDP, 2026)
+%% Adaptacao do TemplateLatexIDP (commit 717f75f) para o formato de artigo,
+%% conforme PLANO.md, secao 8. A classe idp.cls NAO e alterada; toda a
+%% adaptacao (margens de 2,5 cm, sem pre-textuais de dissertacao) fica aqui.
+%%
+%% Compilar:  latexmk -xelatex main-artigo.tex   (ler main-artigo.log depois)
+%%=============================================================================
+\input{config/nivel}
+\documentclass[\NivelTrabalho,secaocontinua,links]{idp}
+
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{amsmath}
+\graphicspath{{../outputs/figuras/}}
+
+\addbibresource{referencias.bib}
+\input{config/dados}   % titulo, programa: fonte unica dos metadados
+
+\begin{document}
+\newgeometry{margin=2.5cm}   % margens exigidas para o artigo (orientacoes, secao 5)
+\pagestyle{idp}\pagenumbering{arabic}
+
+%% ---- Bloco de titulo do artigo (substitui capa e folha de rosto) ----------
+\begin{center}
+  {\large\bfseries \TituloTrabalho}\\[6pt]
+  % PREENCHER: nomes completos dos integrantes, separados por ponto e virgula
+  \NomeAutor\\[3pt]
+  Avaliação de Políticas Públicas com Dados --- \NomePrograma, \NomeInstituicao\\
+  \LocalTrabalho, \AnoTrabalho
+\end{center}
+
+\input{pretextual/resumo}     % ate 250 palavras + palavras-chave
+% \input{pretextual/abstract} % opcional
+
+\textual
+\input{secoes/01-introducao}
+\input{secoes/02-dados}
+\input{secoes/03-estrategia-empirica}
+\input{secoes/04-resultados}
+\input{secoes/05-robustez}
+\input{secoes/06-discussao-limitacoes}
+\input{secoes/07-conclusao}
+\input{secoes/declaracao-ia}  % Anexo II da Politica de IA, antes das referencias
+
+\postextual
+\referencias
+\input{postextual/apendices}  % opcional: dicionario de variaveis, link do repositorio
+\end{document}
