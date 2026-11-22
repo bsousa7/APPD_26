@@ -44,6 +44,9 @@ sem trocar as versões do próprio Colab; o caderno imprime as versões efetivas
 O aviso de conflito entre `holidays` e `python-dateutil` pode ser ignorado: o PySUS
 fixa `python-dateutil==2.8.2` e o pacote `holidays` não é usado. Os arquivos gerados ficam nessa cópia temporária, que some
 quando a sessão termina: baixe o que precisar ou faça commit a partir dela.
+Na primeira execução no Colab, a célula de instalação pode parar pedindo para
+reiniciar a sessão (troca de versão do numpy). Reinicie em "Ambiente de execução >
+Reiniciar sessão" e execute tudo de novo **desde a primeira célula de código**.
 
 Testes das funções auxiliares: `python -m pytest tests -q`.
 
