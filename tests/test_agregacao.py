@@ -182,3 +182,40 @@ def test_classificacao_idade_ignora_responsabilidade():
         {"id": 287, "nome": "Idade"},
         {"id": 9, "nome": "Condição no domicílio e o compartilhamento da responsabilidade pelo domicílio"}]}
     assert _classificacao_idade(meta)["id"] == 287
+
+
+def test_extrair_partes_paralelo_retentativa_e_retomada(tmp_path):
+    import threading
+    import time
+
+    from appd.armazenamento import extrair_partes
+
+    ativos, pico, chamadas, trava = [0], [0], {}, threading.Lock()
+
+    def gerar(uf, ano):
+        with trava:
+            ativos[0] += 1
+            pico[0] = max(pico[0], ativos[0])
+            chamadas[(uf, ano)] = chamadas.get((uf, ano), 0) + 1
+            n = chamadas[(uf, ano)]
+        time.sleep(0.05)
+        with trava:
+            ativos[0] -= 1
+        if uf == "RJ" and n == 1:
+            raise RuntimeError("database is locked")  # falha passageira
+        if uf == "SP":
+            raise RuntimeError("FTP fora do ar")      # falha persistente
+        return pd.DataFrame({"uf": [uf], "ano": [ano]})
+
+    chaves = [(uf, 2015) for uf in ["AC", "AL", "AM", "AP", "BA", "RJ", "SP"]]
+    arquivo = lambda uf, ano: tmp_path / f"{uf}_{ano}.parquet"
+    falhas = []
+    df = extrair_partes("teste", chaves, arquivo, gerar, falhas, simultaneos=3, espera_s=0.01)
+    assert pico[0] == 3                                 # 3 partes ao mesmo tempo
+    assert set(df["uf"]) == {"AC", "AL", "AM", "AP", "BA", "RJ"}  # RJ passou na 2ª tentativa
+    assert [f["parte"] for f in falhas] == ["('SP', 2015)"] and chamadas[("SP", 2015)] == 3
+
+    # Retomada: só a parte que falhou é chamada de novo.
+    antes = dict(chamadas)
+    extrair_partes("teste", chaves, arquivo, gerar, [], simultaneos=3, espera_s=0.01)
+    assert {k for k in chamadas if chamadas[k] != antes[k]} == {("SP", 2015)}

@@ -69,3 +69,58 @@ def com_checkpoint(arquivo: Path, gerar: Callable[[], pd.DataFrame]) -> pd.DataF
     df.to_parquet(temporario, index=False)
     os.replace(temporario, arquivo)
     return df
+
+
+def extrair_partes(
+    nome: str,
+    chaves: list[tuple],
+    arquivo: Callable[..., Path],
+    gerar: Callable[..., pd.DataFrame],
+    falhas: list[dict],
+    simultaneos: int = 3,
+    tentativas: int = 3,
+    espera_s: float = 10.0,
+    relatar_a_cada: int = 25,
+) -> pd.DataFrame:
+    """Executa `gerar(*chave)` para cada chave, com checkpoint em `arquivo(*chave)`.
+
+    - Até `simultaneos` partes rodam ao mesmo tempo (threads); como as chaves
+      vêm ordenadas por ano e UF, na prática são UFs diferentes em paralelo.
+    - Cada parte tem até `tentativas` tentativas, com espera crescente
+      (`espera_s`, 2×`espera_s`, ...), para falhas passageiras do FTP ou do
+      banco de estado do PySUS ("database is locked").
+    - Partes já gravadas são lidas do disco. Uma parte que falha em todas as
+      tentativas é registrada em `falhas` e não interrompe as demais; na
+      próxima execução, só ela é refeita.
+    Devolve a concatenação das partes não vazias.
+    """
+    import time
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def _uma(chave):
+        ultimo = None
+        for t in range(1, tentativas + 1):
+            try:
+                return com_checkpoint(arquivo(*chave), lambda: gerar(*chave))
+            except Exception as erro:  # noqa: BLE001 - tenta de novo e depois registra
+                ultimo = erro
+                if t < tentativas:
+                    time.sleep(espera_s * t)
+        raise ultimo
+
+    partes, t0, n_falhas = [], time.time(), len(falhas)
+    with ThreadPoolExecutor(max_workers=max(1, simultaneos)) as executor:
+        futuros = {executor.submit(_uma, chave): chave for chave in chaves}
+        for i, futuro in enumerate(as_completed(futuros), 1):
+            chave = futuros[futuro]
+            try:
+                partes.append(futuro.result())
+            except Exception as erro:  # noqa: BLE001
+                if len(falhas) == n_falhas:  # mostra a primeira falha de cada base
+                    print(f"{nome}: falha em {chave}: {str(erro)[:300]}")
+                falhas.append({"base": nome, "parte": str(chave), "erro": str(erro)[:300]})
+            if i % relatar_a_cada == 0 or i == len(chaves):
+                print(f"{nome}: {i}/{len(chaves)} partes | {(time.time() - t0) / 60:.1f} min "
+                      f"| falhas: {len(falhas) - n_falhas}", flush=True)
+    partes = [p for p in partes if len(p)]
+    return pd.concat(partes, ignore_index=True) if partes else pd.DataFrame()

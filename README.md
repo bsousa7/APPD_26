@@ -59,7 +59,7 @@ Reiniciar sessão" e execute tudo de novo **desde a primeira célula de código*
 
 **Extração (`01_extracao.ipynb`).** Execute primeiro com `MODO_TESTE = True` (Acre,
 2014–2015, poucos minutos) e confira, na seção 6.5, um município-ano com o TabNet. Depois
-mude para `MODO_TESTE = False` e execute tudo de novo. Cada parte (uma UF em um ano) é
+mude para `MODO_TESTE = False` e execute tudo de novo. Até três partes (UFs) são baixadas ao mesmo tempo (`SIMULTANEOS = 3`), e cada parte (uma UF em um ano) é
 gravada assim que termina; se a sessão cair, basta executar de novo, e só as partes que
 faltam são baixadas. No Colab, a célula de ambiente pede para montar o Google Drive e os
 resultados ficam em `MyDrive/APPD_26_dados/processed`.
