@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import datetime as dt
 import shutil
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -63,7 +64,52 @@ def configurar_cache(raiz: Path) -> Path:
 
     pysus.set_cache(destino)
     CACHE_DIR = destino
+    proteger_catalogo_pysus()
     return destino
+
+
+_TRAVA_CATALOGO = threading.RLock()
+
+
+def proteger_catalogo_pysus() -> None:
+    """Torna seguro chamar o PySUS de várias threads ao mesmo tempo.
+
+    A cada chamada, o PySUS (2.12.2) confere o catálogo local (DuckDB) contra o
+    remoto pelo tamanho; se essa conferência falha, ele baixa o catálogo de novo
+    e substitui o arquivo enquanto outras threads o consultam ("Table with name
+    datasets does not exist"). Aqui: (1) o catálogo é baixado uma única vez,
+    sob trava, e não é substituído durante a extração (ele só lista os arquivos
+    do FTP); (2) a criação da conexão com o catálogo também fica sob trava.
+    Um download forçado (catálogo corrompido) continua permitido, sob trava.
+    """
+    from pysus.api.ducklake.catalog import adapters as ad
+
+    base = ad.BaseAdapter
+    if getattr(base, "_appd_protegido", False):
+        return
+    download_original = base._download_catalog
+    setup_original = base.setup_engine
+
+    async def _download_catalog(self, local_path, remote_path, force=False, callback=None):
+        local_path = Path(local_path)
+
+        def _pronto():
+            return local_path.exists() and local_path.stat().st_size > 0
+
+        if not force and _pronto():
+            return
+        with _TRAVA_CATALOGO:
+            if not force and _pronto():
+                return
+            await download_original(self, local_path, remote_path, force=force, callback=callback)
+
+    def setup_engine(self, *args, **kwargs):
+        with _TRAVA_CATALOGO:
+            return setup_original(self, *args, **kwargs)
+
+    base._download_catalog = _download_catalog
+    base.setup_engine = setup_engine
+    base._appd_protegido = True
 
 
 def _pastas_de_cache() -> list[Path]:

@@ -219,3 +219,39 @@ def test_extrair_partes_paralelo_retentativa_e_retomada(tmp_path):
     antes = dict(chamadas)
     extrair_partes("teste", chaves, arquivo, gerar, [], simultaneos=3, espera_s=0.01)
     assert {k for k in chamadas if chamadas[k] != antes[k]} == {("SP", 2015)}
+
+
+def test_catalogo_pysus_baixado_uma_vez_com_threads(tmp_path, monkeypatch):
+    import asyncio
+    import threading
+    import time
+
+    from pysus.api.ducklake.catalog import adapters as ad
+
+    from appd import download as dl
+
+    downloads = []
+
+    async def download_falso(self, local_path, remote_path, force=False, callback=None):
+        downloads.append(force)
+        time.sleep(0.1)
+        local_path.write_bytes(b"catalogo")
+
+    monkeypatch.setattr(ad.BaseAdapter, "_download_catalog", download_falso)
+    monkeypatch.setattr(ad.BaseAdapter, "setup_engine", lambda self: "engine")
+    monkeypatch.setattr(ad.BaseAdapter, "_appd_protegido", False, raising=False)
+    dl.proteger_catalogo_pysus()
+
+    destino = tmp_path / "catalog.duckdb"
+    threads = [threading.Thread(target=lambda: asyncio.run(
+        ad.BaseAdapter._download_catalog(None, destino, "public/catalog.duckdb"))) for _ in range(3)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert downloads == [False]  # três threads, um único download
+    asyncio.run(ad.BaseAdapter._download_catalog(None, destino, "x"))
+    assert downloads == [False]  # catálogo existente não é substituído
+    asyncio.run(ad.BaseAdapter._download_catalog(None, destino, "x", force=True))
+    assert downloads == [False, True]  # download forçado continua possível
+    assert ad.BaseAdapter.setup_engine(None) == "engine"
