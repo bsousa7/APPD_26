@@ -131,3 +131,36 @@ def extrair_partes(
                       f"| falhas: {len(falhas) - n_falhas}", flush=True)
     partes = [p for p in partes if len(p)]
     return pd.concat(partes, ignore_index=True) if partes else pd.DataFrame()
+
+
+def preparar_saidas(raiz: Path, pasta_drive: str = PASTA_DRIVE) -> Path:
+    """Garante `outputs/` (figuras e tabelas); no Colab, liga essa pasta ao Drive.
+
+    Arquivos que já existam na cópia local (ex.: fig01_dag.png gerada na seção 1)
+    são copiados para o Drive antes da ligação, sem sobrescrever os de lá.
+    Devolve sempre o caminho relativo `raiz/outputs`.
+    """
+    local = Path(raiz) / "outputs"
+    if not no_colab():
+        for sub in ("figuras", "tabelas"):
+            (local / sub).mkdir(parents=True, exist_ok=True)
+        return local
+    if local.is_symlink():
+        return local
+    from google.colab import drive  # disponível só no Colab
+
+    drive.mount("/content/drive")
+    destino = Path("/content/drive/MyDrive") / pasta_drive / "outputs"
+    for sub in ("figuras", "tabelas"):
+        (destino / sub).mkdir(parents=True, exist_ok=True)
+    if local.exists():
+        for arquivo in local.rglob("*"):
+            if arquivo.is_file() and arquivo.name != ".gitkeep":
+                alvo = destino / arquivo.relative_to(local)
+                if not alvo.exists():
+                    alvo.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(arquivo, alvo)
+        shutil.rmtree(local)
+    local.symlink_to(destino, target_is_directory=True)
+    print(f"Figuras e tabelas no Google Drive: MyDrive/{pasta_drive}/outputs")
+    return local

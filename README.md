@@ -24,7 +24,8 @@ Callaway & Sant'Anna). O plano completo está em [`PLANO.md`](PLANO.md).
 | 1 — Pergunta, estimando, DAG | DAG, teste de backdoor e `fig01_dag.png` feitos (a revisar); literatura pendente |
 | 2 — Esqueleto dos cadernos | Feito (`01_extracao`, `02_analise`) |
 | 3 — Extração | **Concluída** (24/11/2026): `01_extracao` executado no Colab em modo completo; painel de 94.707 linhas (5.571 municípios × 17 anos) conferido com o TabNet ([`docs/validacao/`](docs/validacao/)) |
-| 4 a 9 | Pendentes |
+| 4 — Base analítica e descritiva | `02_analise`, seções 3 e 4, implementadas e testadas com dados fictícios; **a executar no Colab** |
+| 5 a 9 | Pendentes |
 
 ## Como executar
 
@@ -79,7 +80,7 @@ Testes das funções auxiliares: `python -m pytest tests -q`.
 
 ```
 notebooks/   00 (teste, não entregue), 01_extracao, 02_analise
-src/appd/    download, agregacao, armazenamento, estimacao
+src/appd/    download, agregacao, armazenamento, analise, estimacao
 data/raw/    vazio na entrega (o caderno 01 baixa os dados)
 data/processed/  bases agregadas e dicionários
 outputs/     figuras/ e tabelas/ usadas no artigo

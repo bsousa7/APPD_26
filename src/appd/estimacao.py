@@ -87,3 +87,19 @@ def tabela_sintese() -> pd.DataFrame:
 def mde(ep: float, alpha: float = 0.05, poder: float = 0.80) -> float:
     """Efeito mínimo detectável (bicaudal): (z_{1-α/2} + z_{poder}) × EP."""
     return float((stats.norm.ppf(1 - alpha / 2) + stats.norm.ppf(poder)) * ep)
+
+
+def exportar_tabela(df: pd.DataFrame, pasta, nome: str, decimais: int = 2) -> None:
+    """Grava `nome`.csv e `nome`.tex (corpo da tabela para \\input no artigo).
+
+    O .tex usa booktabs e não inclui legenda nem rótulo: título, fonte e nota
+    ficam no ambiente table do artigo (PLANO.md, seção 8.2).
+    """
+    from pathlib import Path
+
+    pasta = Path(pasta)
+    pasta.mkdir(parents=True, exist_ok=True)
+    df.to_csv(pasta / f"{nome}.csv", index=False)
+    tex = df.to_latex(index=False, float_format=lambda v: f"{v:,.{decimais}f}".replace(",", "X")
+                      .replace(".", ",").replace("X", "."), na_rep="", escape=True)
+    (pasta / f"{nome}.tex").write_text(tex, encoding="utf-8")
