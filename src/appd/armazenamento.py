@@ -41,6 +41,7 @@ def preparar_armazenamento(raiz: Path, pasta_drive: str = PASTA_DRIVE) -> Path:
     destino = Path("/content/drive/MyDrive") / pasta_drive / "processed"
     destino.mkdir(parents=True, exist_ok=True)
     if local.is_symlink():
+        print(f"Dados processados no Google Drive: MyDrive/{pasta_drive}/processed")
         return local
     if local.exists():
         # Na cópia clonada há apenas arquivos .gitkeep: podem ser removidos.
@@ -51,6 +52,9 @@ def preparar_armazenamento(raiz: Path, pasta_drive: str = PASTA_DRIVE) -> Path:
             )
         shutil.rmtree(local)
     local.symlink_to(destino, target_is_directory=True)
+    n = sum(1 for _ in destino.rglob("*.parquet"))
+    print(f"Dados processados no Google Drive: MyDrive/{pasta_drive}/processed "
+          f"({n} arquivos .parquet já existentes)")
     return local
 
 
@@ -108,6 +112,9 @@ def extrair_partes(
                     time.sleep(espera_s * t)
         raise ultimo
 
+    ja_gravadas = sum(Path(arquivo(*chave)).exists() for chave in chaves)
+    print(f"{nome}: {ja_gravadas} de {len(chaves)} partes já gravadas (lidas do disco); "
+          f"{len(chaves) - ja_gravadas} a baixar", flush=True)
     partes, t0, n_falhas = [], time.time(), len(falhas)
     with ThreadPoolExecutor(max_workers=max(1, simultaneos)) as executor:
         futuros = {executor.submit(_uma, chave): chave for chave in chaves}
