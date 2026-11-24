@@ -255,3 +255,34 @@ def test_catalogo_pysus_baixado_uma_vez_com_threads(tmp_path, monkeypatch):
     asyncio.run(ad.BaseAdapter._download_catalog(None, destino, "x", force=True))
     assert downloads == [False, True]  # download forçado continua possível
     assert ad.BaseAdapter.setup_engine(None) == "engine"
+
+
+def test_estado_pysus_com_threads(tmp_path, monkeypatch):
+    """Vários clientes PySUS em threads usando o mesmo config.db (DuckDB real)."""
+    import asyncio
+    from concurrent.futures import ThreadPoolExecutor
+
+    from pysus.api import client as cl
+
+    from appd import download as dl
+
+    for nome in ("get_local_file", "_update_state", "_delete_record", "__init__",
+                 "get_local_hierarchy", "get_completed_remote_paths", "__aexit__"):
+        monkeypatch.setattr(cl.PySUS, nome, getattr(cl.PySUS, nome))
+    monkeypatch.setattr(cl.PySUS, "_appd_protegido", False, raising=False)
+    dl.proteger_estado_pysus()
+
+    banco = tmp_path / "config.db"
+
+    async def uma_vez(i):
+        p = cl.PySUS(db_path=banco)  # sem __aenter__: não abre o catálogo remoto
+        arquivo = tmp_path / f"f{i}.parquet"
+        arquivo.write_bytes(b"x")
+        await p._update_state(arquivo, f"remoto/f{i}", "ftp", cl.DownloadStatus.COMPLETED)
+        assert p.get_completed_remote_paths()
+        await p._delete_record(str(tmp_path / "inexistente"))
+        p.engine.dispose()
+
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        list(ex.map(lambda i: asyncio.run(uma_vez(i)), range(30)))
+    assert len(cl.PySUS(db_path=banco).get_completed_remote_paths()) == 30

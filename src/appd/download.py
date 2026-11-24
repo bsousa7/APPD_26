@@ -110,6 +110,49 @@ def proteger_catalogo_pysus() -> None:
     base._download_catalog = _download_catalog
     base.setup_engine = setup_engine
     base._appd_protegido = True
+    proteger_estado_pysus()
+
+
+_TRAVA_ESTADO = threading.RLock()
+
+
+def proteger_estado_pysus() -> None:
+    """Serializa o acesso ao banco de estado dos downloads do PySUS (config.db).
+
+    Cada chamada do PySUS (2.12.2) cria uma conexão própria com config.db
+    (DuckDB) e a fecha em seguida; com várias threads, uma tenta abrir o arquivo
+    enquanto outra o fecha ("Unique file handle conflict ... config.db is
+    already attached"). Aqui, a criação do cliente, as consultas e gravações de
+    estado e o fechamento passam por uma trava única. Os downloads (FTP) e a
+    leitura dos arquivos continuam em paralelo.
+    """
+    import functools
+
+    from pysus.api import client as cl
+
+    pysus_cls = cl.PySUS
+    if getattr(pysus_cls, "_appd_protegido", False):
+        return
+
+    def _assincrono(bruto):
+        async def metodo(self, *args, **kwargs):
+            with _TRAVA_ESTADO:
+                return await bruto(self, *args, **kwargs)
+        return functools.wraps(bruto)(metodo)
+
+    def _sincrono(original):
+        def metodo(self, *args, **kwargs):
+            with _TRAVA_ESTADO:
+                return original(self, *args, **kwargs)
+        return functools.wraps(original)(metodo)
+
+    for nome in ("get_local_file", "_update_state", "_delete_record"):
+        decorado = getattr(pysus_cls, nome)
+        setattr(pysus_cls, nome, cl._sync_aware(_assincrono(decorado.__wrapped__)))
+    for nome in ("__init__", "get_local_hierarchy", "get_completed_remote_paths"):
+        setattr(pysus_cls, nome, _sincrono(getattr(pysus_cls, nome)))
+    pysus_cls.__aexit__ = _assincrono(pysus_cls.__aexit__)
+    pysus_cls._appd_protegido = True
 
 
 def _pastas_de_cache() -> list[Path]:
