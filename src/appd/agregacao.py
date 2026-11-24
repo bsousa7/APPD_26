@@ -61,6 +61,25 @@ def normalizar_cod6(cod: pd.Series) -> pd.Series:
     return cod.str[:6]
 
 
+COD6_BRASILIA = "530010"
+
+
+def unificar_distrito_federal(cod6: pd.Series) -> pd.Series:
+    """Leva qualquer código do DF (53xxxx) para Brasília (530010).
+
+    O DF é um único município no IBGE, mas o DATASUS registra parte das
+    ocorrências com códigos de regiões administrativas (ex.: 530040, 530180).
+    """
+    cod6 = cod6.astype("string")
+    return cod6.mask(cod6.str.startswith("53"), COD6_BRASILIA)
+
+
+def somar_por_municipio(df: pd.DataFrame, chaves: list[str], valores: list[str]) -> pd.DataFrame:
+    """Unifica o DF em 530010 e soma `valores` por `chaves` (que incluem cod6)."""
+    df = df.assign(cod6=unificar_distrito_federal(df["cod6"]))
+    return df.groupby(chaves, as_index=False)[valores].sum()
+
+
 def _numero(serie: pd.Series) -> pd.Series:
     return pd.to_numeric(serie.astype("string").str.strip(), errors="coerce")
 

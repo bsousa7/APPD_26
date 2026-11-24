@@ -315,3 +315,13 @@ def test_arquivo_inexistente_nas_duas_origens(monkeypatch):
     with pytest.raises(RuntimeError) as erro:
         dl.baixar_datasus("cnes", "RR", 2008, 12, grupo="IN")
     assert not isinstance(erro.value, dl.ArquivoInexistente)
+
+
+def test_unificar_distrito_federal():
+    from appd.agregacao import somar_por_municipio, unificar_distrito_federal
+
+    cod = pd.Series(["530010", "530040", "530180", "120040", "520010"])
+    assert unificar_distrito_federal(cod).tolist() == ["530010", "530010", "530010", "120040", "520010"]
+    df = pd.DataFrame({"cod6": ["530010", "530040", "120040"], "ano": [2015] * 3, "n": [1, 2, 3]})
+    out = somar_por_municipio(df, ["cod6", "ano"], ["n"]).set_index("cod6")["n"].to_dict()
+    assert out == {"530010": 3, "120040": 3}
