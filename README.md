@@ -24,7 +24,7 @@ Callaway & Sant'Anna). O plano completo está em [`PLANO.md`](PLANO.md).
 | 1 — Pergunta, estimando, DAG | DAG, teste de backdoor e `fig01_dag.png` feitos (a revisar); literatura pendente |
 | 2 — Esqueleto dos cadernos | Feito (`01_extracao`, `02_analise`) |
 | 3 — Extração | **Concluída** (24/11/2026): `01_extracao` executado no Colab em modo completo; painel de 94.707 linhas (5.571 municípios × 17 anos) conferido com o TabNet ([`docs/validacao/`](docs/validacao/)) |
-| 4 — Base analítica e descritiva | `02_analise`, seções 3 e 4, implementadas e testadas com dados fictícios; **a executar no Colab** |
+| 4 — Base analítica e descritiva | `02_analise`, seções 3 e 4, executadas no Colab em 24/11/2026: amostra DiD de 5.241 municípios × 17 anos; base do PSM com 978 tratados (2013–2015) e 2.777 nunca tratados; `tab01`, `fig02`, `fig03` em `outputs/` (fig02 a regerar após ajuste do título) |
 | 5 a 9 | Pendentes |
 
 ## Como executar
