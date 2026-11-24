@@ -246,6 +246,10 @@ def interpolar_populacao(pop: pd.DataFrame, anos: list[int]) -> pd.DataFrame:
     durante o período continuam sem população antes da criação.
     Devolve cod6, ano, populacao, populacao_imputada (bool).
     """
+    # O SIDRA chega como texto; to_numeric pode gerar Float64 (anulável) ou object,
+    # que a interpolação não aceita. Converte para float64 comum.
+    pop = pop.assign(populacao=pd.to_numeric(pop["populacao"], errors="coerce").astype("float64"),
+                     ano=pop["ano"].astype("int64"))
     largo = pop.pivot_table(index="cod6", columns="ano", values="populacao", aggfunc="first")
     largo = largo.reindex(columns=anos)
     observado = largo.notna()

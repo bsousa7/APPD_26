@@ -107,6 +107,16 @@ def test_interpolar_populacao():
     assert np.isnan(out.loc[("b", 2009), "populacao"])  # não extrapola
 
 
+def test_interpolar_populacao_tipos_do_sidra():
+    """Como chega no Colab: valores numéricos anuláveis (Float64) e texto com '...'."""
+    for valores in (pd.array([100.0, None, 120.0], dtype="Float64"),
+                    pd.array(["100", "...", "120"], dtype="string")):
+        pop = pd.DataFrame({"cod6": ["a"] * 3, "ano": [2009, 2010, 2011], "populacao": valores})
+        pop = pop.loc[pop["ano"] != 2010] if valores.dtype == "Float64" else pop
+        out = interpolar_populacao(pop, [2009, 2010, 2011]).set_index("ano")
+        assert out.loc[2010, "populacao"] == 110 and bool(out.loc[2010, "populacao_imputada"])
+
+
 def test_montar_painel():
     mun = pd.DataFrame({"cod6": ["a", "b"], "uf": ["AC", "AC"]})
     polos = pd.DataFrame({"cod6": ["a"], "ano": [2014], "n_polos": [1]})
