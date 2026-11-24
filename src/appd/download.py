@@ -238,6 +238,10 @@ def apagar(caminhos: list[str]) -> None:
                 irmao.unlink()
 
 
+class ArquivoInexistente(FileNotFoundError):
+    """O arquivo pedido não existe nem no FTP do DATASUS nem no espelho do PySUS."""
+
+
 def _baixar_caminhos(sistema: str, uf: str, ano: int, mes: int | None,
                      grupo: str | None) -> tuple[list[str], str]:
     """Baixa o arquivo pelo PySUS: FTP do DATASUS e, se falhar, o catálogo.
@@ -252,7 +256,7 @@ def _baixar_caminhos(sistema: str, uf: str, ano: int, mes: int | None,
     if mes is not None:
         argumentos["month"] = mes
 
-    erros = []
+    erros, inexistente = [], []
     for origem in ("origin", "catalog"):
         try:
             caminhos = _fora_do_laco_jupyter(funcao, **argumentos, source=origem)
@@ -264,6 +268,10 @@ def _baixar_caminhos(sistema: str, uf: str, ano: int, mes: int | None,
             )
         except Exception as erro:  # noqa: BLE001 - registra e tenta a próxima origem
             erros.append(f"{origem}: {erro}")
+            inexistente.append(isinstance(erro, FileNotFoundError))
+    if all(inexistente):
+        raise ArquivoInexistente(
+            f"{sistema.upper()}-{grupo} {uf} {ano}/{mes}: arquivo inexistente nas duas origens")
     raise RuntimeError(
         f"Falha ao baixar {sistema.upper()}-{grupo} {uf} {ano}/{mes}: " + " | ".join(erros)
     )

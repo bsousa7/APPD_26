@@ -286,3 +286,22 @@ def test_estado_pysus_com_threads(tmp_path, monkeypatch):
     with ThreadPoolExecutor(max_workers=6) as ex:
         list(ex.map(lambda i: asyncio.run(uma_vez(i)), range(30)))
     assert len(cl.PySUS(db_path=banco).get_completed_remote_paths()) == 30
+
+
+def test_arquivo_inexistente_nas_duas_origens(monkeypatch):
+    import pysus
+    import pytest
+
+    from appd import download as dl
+
+    monkeypatch.setattr(pysus.ftp, "cnes", lambda **kw: [])
+    with pytest.raises(dl.ArquivoInexistente):
+        dl.baixar_datasus("cnes", "RR", 2008, 12, grupo="IN")
+
+    def falha_de_rede(**kw):
+        raise ConnectionError("FTP fora do ar")
+
+    monkeypatch.setattr(pysus.ftp, "cnes", falha_de_rede)
+    with pytest.raises(RuntimeError) as erro:
+        dl.baixar_datasus("cnes", "RR", 2008, 12, grupo="IN")
+    assert not isinstance(erro.value, dl.ArquivoInexistente)
