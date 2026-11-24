@@ -23,7 +23,7 @@ Callaway & Sant'Anna). O plano completo está em [`PLANO.md`](PLANO.md).
 | 0.6 — LaTeX | Template copiado e adaptado em `artigo/`; **compilação a testar localmente** |
 | 1 — Pergunta, estimando, DAG | DAG, teste de backdoor e `fig01_dag.png` feitos (a revisar); literatura pendente |
 | 2 — Esqueleto dos cadernos | Feito (`01_extracao`, `02_analise`) |
-| 3 — Extração | `01_extracao` implementado; modo de teste (AC, 2014–2015) executado no Colab e conferido com o TabNet ([`docs/validacao/`](docs/validacao/)); **extração completa a executar** |
+| 3 — Extração | **Concluída** (24/11/2026): `01_extracao` executado no Colab em modo completo; painel de 94.707 linhas (5.571 municípios × 17 anos) conferido com o TabNet ([`docs/validacao/`](docs/validacao/)) |
 | 4 a 9 | Pendentes |
 
 ## Como executar
@@ -66,7 +66,7 @@ resultados ficam em `MyDrive/APPD_26_dados/processed`.
 
 Testes das funções auxiliares: `python -m pytest tests -q`.
 
-**Tempo estimado:** [PREENCHER após a primeira execução completa do caderno 01].
+**Tempo estimado:** extração completa do caderno 01 em cerca de 12 horas no Colab gratuito, com 3 UFs simultâneas, em mais de uma sessão (a primeira execução teve conflitos internos do PySUS, depois corrigidos). Com as partes já gravadas no Drive, uma nova execução leva cerca de 1 minuto. [Revisar após a reexecução integral da Fase 8.]
 
 ## Dependências externas
 
